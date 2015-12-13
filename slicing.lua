@@ -5,19 +5,18 @@ local options = require "mp.options"
 local cut_pos = nil
 local copy_audio = true
 local o = {
-    target_dir = "~",
-    vcodec = "rawvideo",
-    acodec = "pcm_s16le",
+    target_dir = utils.getcwd(),
+    vcodec = "copy",
+    acodec = "copy",
     prevf = "",
-    vf = "format=yuv444p16,scale=in_color_matrix=$matrix,format=bgr24",
     postvf = "",
     opts = "",
-    ext = "avi",
+    ext = "", -- TODO
     command_template = [[
         ffmpeg -loglevel warning
         -ss $shift -i '$in' -t $duration
         -c:v $vcodec -c:a $acodec $audio
-        -vf $prevf$vf$postvf $opts '$out.$ext'
+        $opts '$out$ext'
     ]],
 }
 options.read_options(o)
@@ -69,8 +68,12 @@ function get_outname(shift, endpos)
     local dotidx = name:reverse():find(".", 1, true)
     if dotidx then name = name:sub(1, -dotidx-1) end
     name = name:gsub(" ", "_")
-    name = name .. string.format(".%s-%s", timestamp(shift), timestamp(endpos))
-    return name
+    -- name = name .. string.format(".%s-%s", timestamp(shift), timestamp(endpos))
+    return name .. "_OUT"
+end
+
+function GetFileExtension(filen)
+    return filen:match("^.+(%..+)$")
 end
 
 function cut(shift, endpos)
@@ -88,13 +91,11 @@ function cut(shift, endpos)
     cmd = cmd:gsub("$vcodec", o.vcodec)
     cmd = cmd:gsub("$acodec", o.acodec)
     cmd = cmd:gsub("$audio", copy_audio and "" or "-an")
-    cmd = cmd:gsub("$prevf", o.prevf)
-    cmd = cmd:gsub("$vf", o.vf)
-    cmd = cmd:gsub("$postvf", o.postvf)
     cmd = cmd:gsub("$matrix", get_csp())
     cmd = cmd:gsub("$opts", o.opts)
     -- Beware that input/out filename may contain replacing patterns.
-    cmd = cmd:gsub("$ext", o.ext)
+    -- cmd = cmd:gsub("$ext", o.ext)
+    cmd = cmd:gsub("$ext", GetFileExtension(mp.get_property("filename")))
     cmd = cmd:gsub("$out", outpath)
     cmd = cmd:gsub("$in", inpath, 1)
 
